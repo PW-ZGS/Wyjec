@@ -50,11 +50,11 @@ flowchart TB
     S ~~~ T
 ```
 
-Alarms can be raised and cancelled by authorized people.
+Alarms can be raised and cancelled by authorized people. The right to raise or cancel an alarm type is granted per person (their role), not tied to whoever raised it, so any authorized controller can end an alarm. Every alarm applies system-wide; there is no geographic targeting. The person raising it can add a short description, and every recipient sees that text exactly as entered.
 
 Scenarios are distributed to devices and stored offline. Alarm delivery is designed not to require the Internet or a centralized server, and can use different communication technologies. Actual delivery still depends on an available communication path; offline devices can use their stored scenarios but cannot exchange updates until a path is available.
 
-During an active alarm, the system can collect participants' alarm reception status, task progress, and, when available, position to provide an overview on a map. Location collection should be limited to what is needed for the response, with access and retention governed by the deploying organization.
+During an active alarm, the system collects participants' alarm reception status, task progress, help requests, and, when available, position to provide an overview on a map. Location is collected **only while an alarm is active**: phones do not send it otherwise, the server rejects it otherwise, and positions gathered during an alarm are deleted when the alarm ends.
 
 
 ## Triple Use
@@ -63,11 +63,11 @@ During an active alarm, the system can collect participants' alarm reception sta
 
 **Air raid alarm**
 
-A school principal is ordered to go to the school and prepare it as a shelter:
+One alarm, three different responsibilities:
 
-- open the building,
-- open the shelter,
-- display required signs.
+- **School Director** → school protected area: stop outdoor activities, move pupils and staff to the protected area, account for everyone.
+- **City Mayor** → Municipal Crisis Management Centre: activate the municipal crisis procedure, switch City Hall to emergency operation, check that key units acknowledged.
+- **Emergency Department Manager** → ED coordination / triage area: activate mass-casualty readiness, prepare triage capacity, verify staffing and supplies.
 
 ### MED — Medical
 
@@ -110,9 +110,9 @@ flowchart LR
 | Folder | What it is |
 |---|---|
 | `database/` | Flyway migrations implementing `siren_db_schema.png` (`migrations/`) plus demo data (`demo/`) |
-| `backend/` | Kotlin + Spring Boot API: device sync, alarm ingest + verification, status, admin API, live updates (SSE), demo autopilot |
-| `admin_panel/` | React + Vite + Leaflet operations console, design from `web-version.png` |
-| `mobile/` | Android app (Kotlin, Jetpack Compose): offline scenarios, alarm to-do list, mesh relay, controller raise/cancel |
+| `backend/` | Kotlin + Spring Boot API: device sync, alarm ingest + verification, status, admin API, live updates (SSE) |
+| `admin_panel/` | React + Vite + Leaflet operations console with two sections: **LIVE** (raise alarm; live map only while an alarm is active) and **SCENARIOS** |
+| `mobile/` | Android app (Kotlin, Jetpack Compose): offline procedures, raise alarm, active-alarm checklist, need help, mesh relay, controller raise/cancel |
 | `DEMO.md` | Step-by-step script for presenting to customers |
 
 ## Quick start
@@ -126,7 +126,7 @@ Requirements: Docker with Compose. For the phone app: JDK 21 and the Android SDK
 * Admin panel: <http://localhost:8080>, log in with **admin / siren** (also `hospital` and `army`).
 * Phones: `./siren.sh url` prints the LAN address, for example `http://192.168.1.20:8080`.
 
-Other commands: `./siren.sh down`, `./siren.sh reset` (wipes the DB: fresh demo data and keys), `./siren.sh logs`, `./siren.sh smoke`.
+Other commands: `./siren.sh down`, `./siren.sh reset` (wipes the DB: fresh demo data and keys), `./siren.sh logs`.
 
 ## Android app
 
@@ -135,7 +135,9 @@ Other commands: `./siren.sh down`, `./siren.sh reset` (wipes the DB: fresh demo 
 adb install -r dist/siren.apk        # or copy the file to the phone and open it
 ```
 
-On first start, enter the laptop address shown by `./siren.sh url` and tap a demo person. **Tomasz Lewandowski** is the best choice: he receives the drone-strike orders and can also raise or cancel that alarm from the phone. Allow notifications and location.
+On first start, enter the laptop address shown by `./siren.sh url` and tap a demo person. For the air-raid demo, enroll three phones as **Ewa Dąbrowska** (School Director), **Andrzej Malinowski** (City Mayor) and **Dr Robert Krawczyk** (Emergency Department Manager). Allow notifications and location.
+
+To update the app, run `./siren.sh apk` again and reinstall with `adb install -r`. After `./siren.sh reset`, re-enroll each phone (**⋮ → Unenroll this phone**), because the server keys change.
 
 * Laptop firewall: allow inbound TCP 8080 (for example `sudo ufw allow 8080/tcp`).
 * Mesh relay: phones on the same Wi‑Fi pass signed alarms to each other over UDP broadcast port 47474. This works with the server stopped. Guest or corporate networks with client isolation block it; a phone hotspot works.
@@ -143,16 +145,16 @@ On first start, enter the laptop address shown by `./siren.sh url` and tap a dem
 
 ## Demo data
 
-Kraków city crisis management (CIV), with a drone-strike scenario matching the web design:
+Air raid is the primary demo scenario (see `DEMO.md`):
 
-| Person | Task group | Phone |
-|---|---|---|
-| Ania Kowalska | Securing shelter S‑07 | simulated |
-| Jacek Zieliński | Securing shelter S‑12 | simulated |
-| Maja Wiśniewska | Manage evacuation | simulated |
-| Tomasz Lewandowski | Notify authorities · can raise and cancel | **real phone** |
+| Person | Role | Air raid destination | Can end air raid |
+|---|---|---|---|
+| Katarzyna Nowak | Crisis Management Operator (admin panel: `admin`) | — | yes |
+| Andrzej Malinowski | City Mayor | Municipal Crisis Management Centre | yes |
+| Ewa Dąbrowska | School Director | Primary School No. 5 protected area | no |
+| Dr Robert Krawczyk | Emergency Department Manager | ED coordination / triage area | no |
 
-Also included: an air raid (school principal opens the school shelter), a hospital mass-casualty incident (MED), and a mobilization (MIL). The **Simulator** page plays every responder without a real phone (the autopilot), so a full response can be shown on one laptop. As soon as a real phone enrolls as a person, the autopilot stops playing that person.
+Alarm types: Air raid, Drone strike, Major fire / smoke, Hazardous chemical release, Flood, Critical infrastructure failure, Major power outage, Security incident and Evacuation order (Kraków), plus Mass-casualty incident (hospital, MED) and Mobilization (army, MIL). Air raid, Drone strike, Mass-casualty incident and Mobilization have full playbooks; the other types can be raised but have no tasks yet.
 
 ## How the security model is implemented
 
@@ -163,6 +165,7 @@ Also included: an air raid (school principal opens the school shelter), a hospit
 | Authenticity independent of server and medium | Phones verify every message themselves, whether it came from the server poll or the mesh. The server verifies it again, together with the controller's rights |
 | Replay protection | Message id unique; CANCEL is terminal; events past `key_epoch.valid_to + 24 h` or in the future are rejected; forged copies are never stored |
 | Key updates | CURRENT plus a pre-distributed NEXT epoch, then GRACE and RETIRED, rotated hourly by the backend |
+| Data minimization | Position is accepted only for an active alarm and deleted when that alarm ends; phones request location updates only while an alarm is active |
 | Offline operation | Scenario bundles (own task groups only, SHA‑256 checked) and keys are stored in on-device SQLite; status waits in an outbox until a path to the server exists |
 
 ### Prototype shortcuts (do not deploy as is)
@@ -183,4 +186,4 @@ cd admin_panel && npm install && npm run dev                    # UI on :5173, p
 ```
 
 Device API (`/api/device/**`, HMAC): `GET sync`, `GET alarms?since=`, `POST alarms` (signed raise/cancel or a relayed copy), `POST status`.
-Admin API (`/api/admin/**`, bearer token): alarm definitions, scenarios, raise/cancel, live detail, event log, people, keys, simulator, `stream` (SSE).
+Admin API (`/api/admin/**`, bearer token): alarm definitions, scenarios, raise (type + description)/cancel, active alarms and live detail, history, event log, people, keys, `stream` (SSE).

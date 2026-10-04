@@ -40,12 +40,16 @@ export function taskProgress(p: Participant) {
 }
 
 export function fmtTime(iso?: string) {
-  if (!iso) return '—'
+  if (!iso) {
+    return '—'
+  }
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
 export function fmtDateTime(iso?: string) {
-  if (!iso) return '—'
+  if (!iso) {
+    return '—'
+  }
   return new Date(iso).toLocaleString([], { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 

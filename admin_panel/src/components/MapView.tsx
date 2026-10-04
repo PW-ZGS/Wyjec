@@ -37,18 +37,17 @@ interface Props {
   destinations?: Location[]
   fitKey?: string
   onSelect?: (personId: string) => void
-  center?: [number, number]
 }
 
 /** OpenStreetMap view with responders and their destinations. */
-export function MapView({ participants = [], destinations = [], fitKey = '', onSelect, center }: Props) {
+export function MapView({ participants = [], destinations = [], fitKey = '', onSelect }: Props) {
   const positioned = participants.filter(p => p.position)
   const points: [number, number][] = [
     ...positioned.map(p => [p.position!.lat, p.position!.lon] as [number, number]),
     ...destinations.map(d => [d.lat, d.lon] as [number, number]),
   ]
   return (
-    <MapContainer center={center ?? KRAKOW} zoom={14} scrollWheelZoom zoomControl={false}>
+    <MapContainer center={KRAKOW} zoom={14} scrollWheelZoom zoomControl={false}>
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
