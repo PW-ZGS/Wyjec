@@ -1,0 +1,7 @@
+spring:
+  flyway:
+    locations: classpath:migrations,classpath:demo
+
+siren:
+  demo:
+    enabled: true

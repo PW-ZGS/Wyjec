@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Prototype: the laptop server runs plain HTTP on the LAN. Requests are still HMAC-authenticated
+     and alarms are ECDSA-signed end to end; production adds TLS. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

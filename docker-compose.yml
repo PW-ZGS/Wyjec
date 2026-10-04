@@ -1,0 +1,50 @@
+# Siren prototype — whole stack on one laptop.
+#   docker compose up --build      → admin panel + API on http://localhost:8080
+# Phones on the same Wi-Fi use http://<laptop-ip>:8080 as server URL.
+name: siren
+
+services:
+  db:
+    image: postgis/postgis:16-3.5
+    environment:
+      POSTGRES_DB: siren
+      POSTGRES_USER: siren
+      POSTGRES_PASSWORD: siren
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - siren-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U siren -d siren"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      SPRING_PROFILES_ACTIVE: ${SIREN_PROFILE:-demo}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health | grep -q UP"]
+      interval: 5s
+      timeout: 3s
+      retries: 40
+
+  web:
+    build:
+      context: admin_panel
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  siren-db:

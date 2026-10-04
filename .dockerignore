@@ -1,0 +1,9 @@
+.git
+**/node_modules
+admin_panel
+mobile
+backend/build
+backend/.gradle
+backend/.kotlin
+*.png
+*.pptx

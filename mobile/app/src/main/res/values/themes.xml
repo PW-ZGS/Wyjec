@@ -1,0 +1,6 @@
+<resources>
+    <style name="Theme.Siren" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#0F1724</item>
+        <item name="android:windowBackground">@android:color/white</item>
+    </style>
+</resources>

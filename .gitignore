@@ -1,1 +1,12 @@
 .idea
+.~lock.*
+**/build/
+**/.gradle/
+**/.kotlin/
+**/node_modules/
+admin_panel/dist/
+mobile/local.properties
+mobile/app/release/
+*.apk
+dist/
+*.tsbuildinfo
