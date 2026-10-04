@@ -1,47 +1,51 @@
 # Demo script (≈10 minutes)
 
 **Before the meeting**
-1. `./siren.sh reset` gives a clean database and fresh keys.
-2. Phone on the same Wi‑Fi as the laptop: open Siren and enroll as **Tomasz Lewandowski**. Turn the volume up.
-3. Browser full-screen on <http://localhost:8080>, logged in as **admin / siren**.
-4. Optional: a second phone enrolled as **Ania** or **Maja**, for the mesh demo.
+1. `./siren.sh reset` gives a clean database and fresh keys (required after this update: new migration and seed).
+2. Three phones on the same Wi‑Fi as the laptop. Open Siren and enroll:
+   - phone 1: **Ewa Dąbrowska** (School Director)
+   - phone 2: **Andrzej Malinowski** (City Mayor)
+   - phone 3: **Dr Robert Krawczyk** (Emergency Department Manager)
+
+   Turn the volume up. Allow location.
+3. Browser full-screen on <http://localhost:8080>, logged in as **admin / siren** (Crisis Management Operator).
 
 ---
 
-### 1. Always ready (1 min)
-*Phone, home screen.* "Normally Siren is a pocket library: every procedure on the phone, **stored offline**." Open *Procedures → Drone strike* to show Tomasz's own tasks only. "A lost phone reveals almost nothing."
+### 1. Normal mode (1 min)
+*Phones.* Only own procedures, stored offline. No map, no location. The Mayor's phone has **RAISE ALARM** at the bottom.
+*Browser, LIVE.* No map: alarm type, description, raise.
 
-### 2. Raise the alarm (1 min)
-*Live page → Drone strike card → mark the area on the map → Raise alarm now.*
-"The alarm is **digitally signed** with the city's key and goes out to everyone in the scenario."
-The phone screams and opens a full-screen red to-do list.
+### 2. Raise AIR RAID (1 min)
+*LIVE → Air raid → description (e.g. "Possible aerial threat over northern district.") → Raise alarm.*
+All three phones ring and show **AIR RAID** with the same description.
 
-### 3. Where to go, what to do (2 min)
-*Phone.* Tap **I've got it**, then **On my way** on the first task. The **Go** button opens navigation.
-*Browser.* The map fills up: green, yellow and red people, the purple affected area, and the roles in *Map references*. Click a person to see each task's status. KPIs at the bottom show delivered, read and tasks done.
-"The duty officer sees in real time who received the alarm, where people are and how far each task has got."
+### 3. One alarm, three responsibilities (3 min)
+Put the phones side by side after **ACKNOWLEDGE**:
+- School Director → school protected area, pupils and staff.
+- City Mayor → Municipal Crisis Management Centre, municipal coordination.
+- ED Manager → triage area, mass-casualty readiness.
+
+Tick tasks on the phones. **GO** opens navigation.
+*Browser.* The map appears only now: three phones, their destinations, task progress. Tap **NEED HELP** on one phone: it shows as NEED HELP on LIVE.
 
 ### 4. Triple use (1 min)
-*Scenarios page.* Click through **Air raid** (school principal), **Mass-casualty incident** (hospital ED) and **Mobilization** (army). "Same engine, different scenario." Optionally log in as `hospital` and raise the MCI.
+*Scenarios page.* Click through **Air raid**, **Mass-casualty incident** and **Mobilization**. Drone strike and the other alarm types stay selectable.
 
 ### 5. Works without the server (2 min)
 1. `docker compose stop backend` takes the server down.
-2. On Tomasz's phone, open **Raise Drone strike** (he is an authorized controller). The phone signs the alarm itself.
-3. The second phone rings anyway, delivered over the Wi‑Fi mesh, with the signature checked on the phone.
-4. `docker compose start backend`. The phones bridge the alarm to the server, and it appears in the **Event log** with first bearer `WIFI_DIRECT`.
+2. On the Mayor's phone: **END ALARM**. The phone signs the cancel itself; the other phones get it over the Wi‑Fi mesh.
+3. `docker compose start backend`. The phones bridge the cancel to the server.
 
-"The authenticity of an alarm does not depend on the server or on the medium."
+Or end it from the browser: **End alarm** on LIVE.
 
-### 6. Trust (1 min)
-*Event log.* Each raise and cancel shows its signature, key epoch and *verified* badge. The key epochs table below shows rotation: CURRENT, then NEXT pre-distributed to phones.
-
-### 7. All clear
-On the phone (as controller) or with **Cancel alarm** in the browser. Every phone gets a signed cancel.
+### 6. All clear
+Every phone returns to normal mode, location sharing stops, positions collected for that alarm are deleted, and LIVE is back to the raise form.
 
 ---
 
 **If something goes wrong**
-* Phone says *offline*: check the laptop IP (`./siren.sh url`), the firewall (port 8080), and that both are on the same Wi‑Fi.
+* Phone stuck on *Waiting for the first sync…*: check the laptop IP (`./siren.sh url`), the firewall (port 8080), and that both are on the same Wi‑Fi.
 * Map is grey: the laptop has no Internet, so OSM tiles are missing. Everything else works.
-* Phone shows *Server refused: request timestamp…*: the phone clock is off by more than 5 minutes.
-* No phone at hand: on the **Simulator** page, tick *Autopilot drives this phone* for Tomasz, then everything runs on the laptop.
+* Phone raise/end fails with a timestamp error: the phone clock is off by more than 5 minutes.
+* No marker for a phone: location permission denied or no fix yet indoors.

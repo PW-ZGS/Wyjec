@@ -12,10 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import pl.siren.mobile.SirenApp
@@ -43,10 +39,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             SirenTheme {
                 val state by engine.state.collectAsStateWithLifecycle()
-                var openAlarm by rememberSaveable { mutableStateOf<String?>(null) }
-                var dismissed by remember { mutableStateOf(setOf<String>()) }
-                val autoOpen = state.activeAlarms.firstOrNull { it.instanceId !in dismissed }
-                val shown = state.alarms.firstOrNull { it.instanceId == openAlarm } ?: autoOpen
+                // An active alarm takes over the app until it ends.
+                val shown = state.activeAlarms.firstOrNull()
 
                 Surface(Modifier.fillMaxSize()) {
                     Box(Modifier.safeDrawingPadding()) {
@@ -56,16 +50,10 @@ class MainActivity : ComponentActivity() {
                                 SirenService.stop(this@MainActivity)
                                 SirenService.start(this@MainActivity)
                             }
-                            shown != null -> AlarmScreen(
-                                state = state,
-                                alarm = shown,
-                                engine = engine,
-                                onBack = { dismissed = dismissed + shown.instanceId; openAlarm = null },
-                            )
+                            shown != null -> AlarmScreen(state = state, alarm = shown, engine = engine)
                             else -> HomeScreen(
                                 state = state,
                                 engine = engine,
-                                onOpenAlarm = { openAlarm = it },
                                 onSync = { SirenService.syncNow(this@MainActivity) },
                                 onUnenroll = { SirenService.stop(this@MainActivity); engine.unenroll() },
                             )

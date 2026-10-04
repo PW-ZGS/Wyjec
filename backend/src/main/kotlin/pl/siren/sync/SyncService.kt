@@ -61,12 +61,9 @@ class SyncService(
 ) {
     private val b64 = Base64.getEncoder()
 
-    /** Alarm definitions whose messages this device must be able to receive. */
-    fun relevantDefinitions(device: DeviceInfo): Set<UUID> {
-        val personId = device.personId ?: return emptySet()
-        val assigned = scenarios.currentVersionsAssignedTo(personId).mapNotNull { scenarios.version(it)?.alarmDefinitionId }
-        return (assigned + scenarios.controllerRights(personId).map { it.alarmDefinitionId }).toSet()
-    }
+    /** Alarms are system-wide: every personal device receives every alarm. */
+    fun relevantDefinitions(device: DeviceInfo): Set<UUID> =
+        if (device.personId == null) emptySet() else scenarios.definitions().map { it.id }.toSet()
 
     @Transactional
     fun sync(device: DeviceInfo, psk: ByteArray): SyncResponse {

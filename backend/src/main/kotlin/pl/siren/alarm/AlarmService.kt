@@ -48,6 +48,7 @@ class AlarmService(
         val p = runCatching { objectMapper.readValue<AlarmPayload>(payloadBytes) }.getOrNull()
             ?: return rejected("malformed payload")
         if (p.type != "RAISE" && p.type != "CANCEL") return rejected("unknown event type ${p.type}")
+        if ((p.description?.length ?: 0) > MAX_DESCRIPTION) return rejected("description longer than $MAX_DESCRIPTION characters")
 
         val epoch = keys.find(p.epoch) ?: return rejected("unknown key epoch ${p.epoch}")
         val definition = scenarios.definition(p.definitionId) ?: return rejected("unknown alarm definition")
@@ -113,18 +114,15 @@ class AlarmService(
             jdbc.update(
                 """
                 INSERT INTO alarm_instance (id, alarm_definition_id, scenario_version_id, raised_at, raised_by_device_id,
-                                            cancelled_at, cancelled_by_device_id, area_center, area_radius_m)
-                VALUES (:id, :definition, :version, :created, :origin, :cancelled, :cancelledBy,
-                        CASE WHEN :lat::float8 IS NULL THEN NULL
-                             ELSE ST_SetSRID(ST_MakePoint(:lon::float8, :lat::float8), 4326)::geography END,
-                        :radius)
+                                            cancelled_at, cancelled_by_device_id, description)
+                VALUES (:id, :definition, :version, :created, :origin, :cancelled, :cancelledBy, :description)
                 """.trimIndent(),
                 mapOf(
                     "id" to p.instanceId, "definition" to p.definitionId, "version" to p.scenarioVersionId,
                     "created" to created, "origin" to p.origin,
                     "cancelled" to if (p.type == "CANCEL") created else null,
                     "cancelledBy" to if (p.type == "CANCEL") p.origin else null,
-                    "lat" to p.area?.lat, "lon" to p.area?.lon, "radius" to p.area?.radiusM,
+                    "description" to p.description,
                 ),
             )
             return IngestResult(IngestOutcome.ACCEPTED, instanceId = p.instanceId)
@@ -134,6 +132,8 @@ class AlarmService(
             "UPDATE alarm_instance SET cancelled_at = :c, cancelled_by_device_id = :o WHERE id = :id AND cancelled_at IS NULL",
             mapOf("c" to created, "o" to p.origin, "id" to p.instanceId),
         )
+        // Location is collected only while the alarm is active: drop what this alarm gathered.
+        jdbc.update("DELETE FROM position_report WHERE alarm_instance_id = :id", mapOf("id" to p.instanceId))
         return IngestResult(IngestOutcome.ACCEPTED, instanceId = p.instanceId)
     }
 
@@ -160,14 +160,15 @@ class AlarmService(
 
     @Transactional
     /** Raise on behalf of an operator: the server signs with the HSM key, acting as the operator's console device. */
-    fun raiseFromConsole(personId: UUID, consoleDeviceId: UUID, definitionId: UUID, area: AlarmArea?): IngestResult {
+    fun raiseFromConsole(personId: UUID, consoleDeviceId: UUID, definitionId: UUID, description: String?): IngestResult {
         val definition = scenarios.definition(definitionId) ?: throw AlarmCommandException("Unknown alarm")
         if (!isAuthorized(personId, definitionId, "RAISE")) throw AlarmCommandException("You are not allowed to raise ${definition.name}")
         val version = definition.currentScenarioVersionId ?: throw AlarmCommandException("Alarm has no published scenario")
         val payload = AlarmPayload(
             id = UUID.randomUUID(), instanceId = UUID.randomUUID(), definitionId = definitionId, code = definition.code,
             title = definition.name, scenarioVersionId = version, type = "RAISE", origin = consoleDeviceId,
-            epoch = keys.current(definition.organizationId).id, createdAt = Instant.now(), area = area,
+            epoch = keys.current(definition.organizationId).id, createdAt = Instant.now(),
+            description = description?.trim()?.ifEmpty { null },
         )
         return ingest(sign(payload, definition.organizationId), "INTERNET")
     }
@@ -212,4 +213,8 @@ class AlarmService(
     }
 
     private fun decode(s: String): ByteArray? = runCatching { Base64.getDecoder().decode(s) }.getOrNull()
+
+    companion object {
+        const val MAX_DESCRIPTION = 200
+    }
 }

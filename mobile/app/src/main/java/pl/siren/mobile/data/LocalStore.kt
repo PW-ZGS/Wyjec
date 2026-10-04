@@ -50,8 +50,6 @@ data class LocalScenario(
     }
 }
 
-data class Area(val lat: Double, val lon: Double, val radiusM: Int)
-
 data class LocalAlarm(
     val instanceId: String,
     val definitionId: String,
@@ -64,7 +62,7 @@ data class LocalAlarm(
     val viaBearer: String,
     val hopCount: Int,
     val acknowledgedAt: Long?,
-    val area: Area?,
+    val description: String?,
 ) {
     val active get() = cancelledAt == null
 }
@@ -78,7 +76,7 @@ data class SeenAlarm(val eventId: String, val payload: ByteArray, val signature:
  * the alarm screen: local_alarm (instances seen) and local_task_state (this person's progress).
  * Production encrypts it (SQLCipher) and keeps signing keys in the TEE keystore.
  */
-class LocalStore(context: Context) : SQLiteOpenHelper(context, "siren.db", null, 1) {
+class LocalStore(context: Context) : SQLiteOpenHelper(context, "siren.db", null, 2) {
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
@@ -102,7 +100,7 @@ class LocalStore(context: Context) : SQLiteOpenHelper(context, "siren.db", null,
         db.execSQL(
             """CREATE TABLE local_alarm (instance_id TEXT PRIMARY KEY, definition_id TEXT NOT NULL, code TEXT NOT NULL, title TEXT NOT NULL,
                scenario_version_id TEXT NOT NULL, raised_at INTEGER NOT NULL, cancelled_at INTEGER, received_at INTEGER NOT NULL,
-               via_bearer TEXT NOT NULL, hop_count INTEGER NOT NULL, acknowledged_at INTEGER, area_lat REAL, area_lon REAL, area_radius INTEGER)""",
+               via_bearer TEXT NOT NULL, hop_count INTEGER NOT NULL, acknowledged_at INTEGER, description TEXT)""",
         )
         db.execSQL(
             """CREATE TABLE local_task_state (instance_id TEXT NOT NULL, task_id TEXT NOT NULL, state TEXT NOT NULL,
@@ -110,7 +108,9 @@ class LocalStore(context: Context) : SQLiteOpenHelper(context, "siren.db", null,
         )
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 2) db.execSQL("ALTER TABLE local_alarm ADD COLUMN description TEXT")
+    }
 
     // ───── keys ─────
     fun replaceKeys(keys: List<LocalKey>) = writableDatabase.tx {
@@ -186,7 +186,7 @@ class LocalStore(context: Context) : SQLiteOpenHelper(context, "siren.db", null,
         put("scenario_version_id", a.scenarioVersionId); put("raised_at", a.raisedAt); put("received_at", a.receivedAt)
         put("via_bearer", a.viaBearer); put("hop_count", a.hopCount)
         a.cancelledAt?.let { put("cancelled_at", it) }
-        a.area?.let { put("area_lat", it.lat); put("area_lon", it.lon); put("area_radius", it.radiusM) }
+        put("description", a.description)
     }, SQLiteDatabase.CONFLICT_IGNORE)
 
     fun markCancelled(instanceId: String, at: Long) =
@@ -200,7 +200,7 @@ class LocalStore(context: Context) : SQLiteOpenHelper(context, "siren.db", null,
             LocalAlarm(
                 str("instance_id"), str("definition_id"), str("code"), str("title"), str("scenario_version_id"), long("raised_at"),
                 longOrNull("cancelled_at"), long("received_at"), str("via_bearer"), int("hop_count"), longOrNull("acknowledged_at"),
-                if (isNull(getColumnIndexOrThrow("area_lat"))) null else Area(double("area_lat"), double("area_lon"), int("area_radius")),
+                strOrNull("description"),
             )
         }
     }
@@ -230,6 +230,9 @@ class LocalStore(context: Context) : SQLiteOpenHelper(context, "siren.db", null,
 
     fun removeOutbox(ids: List<Long>) = writableDatabase.tx { ids.forEach { delete("status_outbox", "id = ?", arrayOf(it.toString())) } }
 
+    /** Alarm over: queued positions must not leave the phone. */
+    fun dropQueuedPositions() = writableDatabase.delete("status_outbox", "kind = 'POSITION'", null)
+
     fun bumpOutbox(ids: List<Long>) = writableDatabase.tx { ids.forEach { execSQL("UPDATE status_outbox SET attempts = attempts + 1 WHERE id = ?", arrayOf(it)) } }
 
     fun wipe() = writableDatabase.tx {
@@ -256,7 +259,7 @@ private inline fun <T> Cursor.all(row: Cursor.() -> T): List<T> {
 private fun Cursor.str(c: String) = getString(getColumnIndexOrThrow(c))
 private fun Cursor.int(c: String) = getInt(getColumnIndexOrThrow(c))
 private fun Cursor.long(c: String) = getLong(getColumnIndexOrThrow(c))
-private fun Cursor.double(c: String) = getDouble(getColumnIndexOrThrow(c))
 private fun Cursor.blob(c: String) = getBlob(getColumnIndexOrThrow(c))
 private fun Cursor.blobOrNull(c: String) = getColumnIndexOrThrow(c).let { if (isNull(it)) null else getBlob(it) }
+private fun Cursor.strOrNull(c: String) = getColumnIndexOrThrow(c).let { if (isNull(it)) null else getString(it) }
 private fun Cursor.longOrNull(c: String) = getColumnIndexOrThrow(c).let { if (isNull(it)) null else getLong(it) }

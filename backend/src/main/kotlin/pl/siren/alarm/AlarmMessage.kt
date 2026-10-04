@@ -19,10 +19,8 @@ data class AlarmPayload(
     val origin: UUID,
     val epoch: Int,
     val createdAt: Instant,
-    val area: AlarmArea? = null,
+    val description: String? = null,
 )
-
-data class AlarmArea(val lat: Double, val lon: Double, val radiusM: Int)
 
 /** Transport form: base64 payload bytes + base64 DER ECDSA signature. Medium-independent. */
 data class SignedAlarm(val payload: String, val signature: String)

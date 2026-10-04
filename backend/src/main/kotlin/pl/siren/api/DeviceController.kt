@@ -10,8 +10,6 @@ import org.springframework.web.bind.annotation.RestController
 import pl.siren.alarm.AlarmService
 import pl.siren.alarm.IngestResult
 import pl.siren.alarm.SignedAlarm
-import pl.siren.config.SirenProperties
-import pl.siren.demo.DemoSimulator
 import pl.siren.identity.DeviceInfo
 import pl.siren.status.StatusBatch
 import pl.siren.status.StatusResult
@@ -31,18 +29,12 @@ class DeviceController(
     private val sync: SyncService,
     private val alarms: AlarmService,
     private val status: StatusService,
-    private val simulator: DemoSimulator,
-    private val props: SirenProperties,
 ) {
     @GetMapping("/sync")
     fun sync(
         @RequestAttribute(DeviceAuthFilter.DEVICE_ATTR) device: DeviceInfo,
         @RequestAttribute(DeviceAuthFilter.PSK_ATTR) psk: ByteArray,
-    ): SyncResponse {
-        // A real phone took over this person: stop the demo autopilot from playing them.
-        if (props.demo.enabled) simulator.release(device.id)
-        return sync.sync(device, psk)
-    }
+    ): SyncResponse = sync.sync(device, psk)
 
     /** Signed alarm messages since a point in time. Devices verify each one themselves. */
     @GetMapping("/alarms")

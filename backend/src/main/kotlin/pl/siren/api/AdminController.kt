@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
-import pl.siren.alarm.AlarmArea
 import pl.siren.alarm.AlarmCommandException
 import pl.siren.alarm.AlarmQueryService
 import pl.siren.alarm.AlarmService
@@ -23,20 +22,17 @@ import pl.siren.alarm.InstanceSummary
 import pl.siren.alarm.IngestOutcome
 import pl.siren.config.SirenProperties
 import pl.siren.crypto.Hashing
-import pl.siren.demo.DemoSimulator
-import pl.siren.demo.SimulatedDevice
 import pl.siren.identity.Bearer
 import pl.siren.identity.IdentityRepository
 import pl.siren.live.LiveUpdates
 import pl.siren.scenario.ScenarioRepository
 import pl.siren.scenario.TaskGroupDto
-import pl.siren.status.StatusBatch
 import java.time.Instant
 import java.util.UUID
 
 data class LoginRequest(val username: String, val password: String)
 data class LoginResponse(val token: String, val username: String, val displayName: String, val organizationName: String)
-data class RaiseRequest(val definitionId: UUID, val area: AlarmArea? = null)
+data class RaiseRequest(val definitionId: UUID, val description: String? = null)
 data class AlarmDefinitionView(
     val id: UUID,
     val code: String,
@@ -82,8 +78,6 @@ data class PersonView(
     val devices: List<DeviceView>,
 )
 data class KeyEpochView(val id: Int, val organizationName: String, val status: String, val validFrom: Instant, val validTo: Instant, val publicKeySha256: String)
-data class SimulatorView(val demo: Boolean, val autopilot: Boolean, val devices: List<SimulatedDevice>)
-data class Toggle(val enabled: Boolean)
 
 @RestController
 @RequestMapping("/api/admin")
@@ -94,9 +88,7 @@ class AdminController(
     private val alarms: AlarmService,
     private val queries: AlarmQueryService,
     private val identity: IdentityRepository,
-    private val simulator: DemoSimulator,
     private val jdbc: NamedParameterJdbcTemplate,
-    private val props: SirenProperties,
 ) {
     @PostMapping("/login")
     fun login(@RequestBody req: LoginRequest): ResponseEntity<Any> {
@@ -164,7 +156,7 @@ class AdminController(
         @RequestAttribute(OperatorAuthFilter.SESSION_ATTR) s: OperatorSession,
         @RequestBody req: RaiseRequest,
     ): InstanceDetail {
-        val result = alarms.raiseFromConsole(s.personId, s.consoleDeviceId, req.definitionId, req.area)
+        val result = alarms.raiseFromConsole(s.personId, s.consoleDeviceId, req.definitionId, req.description)
         if (result.outcome != IngestOutcome.ACCEPTED) throw AlarmCommandException(result.reason ?: "Alarm was not accepted")
         return queries.detail(result.instanceId!!)!!
     }
@@ -226,27 +218,6 @@ class AdminController(
                 publicKeySha256 = Hashing.hex(Hashing.sha256(rs.getBytes("public_key"))).take(16),
             )
         }
-
-    // ───────────── Demo simulator ─────────────
-
-    @GetMapping("/simulator")
-    fun simulatorView() = SimulatorView(props.demo.enabled, simulator.autopilot.get(), simulator.devices())
-
-    @PostMapping("/simulator/autopilot")
-    fun autopilot(@RequestBody t: Toggle): SimulatorView {
-        simulator.autopilot.set(t.enabled)
-        live.publish("simulator")
-        return simulatorView()
-    }
-
-    @PostMapping("/simulator/devices/{id}/simulated")
-    fun simulated(@PathVariable id: UUID, @RequestBody t: Toggle): SimulatorView {
-        simulator.setSimulated(id, t.enabled)
-        return simulatorView()
-    }
-
-    @PostMapping("/simulator/devices/{id}/report")
-    fun report(@PathVariable id: UUID, @RequestBody batch: StatusBatch) = simulator.report(id, batch)
 }
 
 @RestController
@@ -258,8 +229,8 @@ class PublicController(private val props: SirenProperties) {
         "demo" to props.demo.enabled,
         "serverTime" to Instant.now(),
         "demoAccounts" to if (props.demo.enabled) listOf(
-            mapOf("username" to "admin", "password" to "siren", "who" to "Katarzyna Nowak — Kraków crisis duty officer"),
-            mapOf("username" to "hospital", "password" to "siren", "who" to "Dr Robert Krawczyk — Head of ED"),
+            mapOf("username" to "admin", "password" to "siren", "who" to "Katarzyna Nowak — Crisis Management Operator"),
+            mapOf("username" to "hospital", "password" to "siren", "who" to "Dr Robert Krawczyk — Emergency Department Manager"),
             mapOf("username" to "army", "password" to "siren", "who" to "Capt. Adam Grabowski — company commander"),
         ) else emptyList(),
     )

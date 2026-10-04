@@ -63,6 +63,7 @@ h1, h2, h3 { margin: 0; letter-spacing: -0.01em; }
 .title { font-size: 30px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.01em; }
 .title.normal { text-transform: none; }
 .subtle { color: var(--muted); font-size: 14px; }
+.description { font-size: 18px; font-weight: 600; margin-top: 8px; color: var(--ink-2); }
 .head-right { display: flex; align-items: center; gap: 16px; color: var(--muted); font-size: 14px; }
 
 /* ───── Cards & layout ───── */
@@ -159,11 +160,6 @@ input[type='text'], input[type='password'], select {
   font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; width: 100%; background: #fff; color: var(--ink);
 }
 label.field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
-.switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px; font-weight: 600; }
-.switch input { width: 40px; height: 22px; appearance: none; background: #d5dad8; border-radius: 99px; position: relative; cursor: pointer; transition: 0.2s; margin: 0; }
-.switch input::after { content: ''; position: absolute; width: 18px; height: 18px; top: 2px; left: 2px; border-radius: 99px; background: #fff; transition: 0.2s; }
-.switch input:checked { background: var(--green); }
-.switch input:checked::after { left: 20px; }
 .error { background: var(--red-soft); color: #b42318; border-radius: 10px; padding: 10px 14px; font-size: 14px; }
 .notice { background: var(--soft); border-radius: 10px; padding: 10px 14px; font-size: 14px; color: var(--ink-2); }
 
@@ -180,27 +176,11 @@ tr:last-child td { border-bottom: none; }
 .chip.bad { background: var(--red-soft); color: var(--red); }
 .chip.warn { background: var(--amber-soft); color: var(--amber); }
 
-/* ───── Alarm cards ───── */
-.alarm-card { display: flex; flex-direction: column; gap: 14px; }
-.alarm-card .top { display: flex; gap: 14px; align-items: center; }
-.alarm-card .top img { height: 44px; }
-.alarm-card .name { font-size: 19px; font-weight: 800; }
-.alarm-card .meta { display: flex; gap: 18px; font-size: 13px; color: var(--muted); }
-.alarm-card .meta b { color: var(--ink); font-size: 16px; display: block; }
-.alarm-card.active { border-color: #f3b3b5; box-shadow: 0 0 0 4px var(--red-soft); }
-
 /* ───── Scenario view ───── */
 .groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
 .group { border: 1px solid var(--line); border-radius: 14px; padding: 18px; background: #fbfcfb; }
 .group ol { margin: 10px 0 0; padding-left: 20px; font-size: 14px; line-height: 1.7; }
 .confirm { font-size: 11px; color: var(--amber); font-weight: 700; margin-left: 6px; }
-
-/* ───── Dialog ───── */
-.backdrop { position: fixed; inset: 0; background: rgba(20, 28, 26, 0.45); display: grid; place-items: center; z-index: 2000; padding: 20px; }
-.dialog { background: #fff; border-radius: 20px; width: min(860px, 100%); max-height: 92vh; overflow: auto; padding: 28px; box-shadow: 0 30px 80px rgba(0,0,0,.25); }
-.dialog h2 { font-size: 24px; margin-bottom: 6px; }
-.dialog .mini-map { height: 340px; border-radius: 14px; overflow: hidden; margin: 14px 0; border: 1px solid var(--line); position: relative; }
-.dialog .mini-map .leaflet-container { position: absolute; inset: 0; }
 
 /* ───── Login ───── */
 .login { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; }
@@ -211,17 +191,6 @@ tr:last-child td { border-bottom: none; }
 .login .hero .where span { color: var(--red); }
 .login .form { display: flex; flex-direction: column; justify-content: center; padding: 64px; max-width: 520px; gap: 16px; }
 .demo-accounts button { text-align: left; width: 100%; margin-bottom: 8px; }
-
-/* ───── Simulator phones ───── */
-.phones { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 20px; }
-.phone { border: 10px solid #0f1724; border-radius: 30px; background: #f6f7f8; overflow: hidden; display: flex; flex-direction: column; min-height: 400px; }
-.phone .ph-head { background: #fff; padding: 12px 14px; border-bottom: 1px solid var(--line); }
-.phone .ph-alarm { background: var(--red); color: #fff; padding: 10px 14px; font-weight: 700; font-size: 14px; }
-.phone .ph-alarm small { display: block; font-weight: 500; opacity: 0.9; }
-.phone .ph-body { padding: 12px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
-.phone .ph-task { background: #fff; border-radius: 10px; padding: 8px 10px; font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
-.phone .ph-task .acts { display: flex; gap: 4px; flex-wrap: wrap; }
-.phone .ph-idle { margin: auto; text-align: center; color: var(--muted); font-size: 13px; padding: 20px; }
 
 @media (max-width: 1100px) {
   .live { grid-template-columns: 1fr; }

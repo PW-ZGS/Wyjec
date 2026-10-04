@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONArray
 import org.json.JSONObject
 import pl.siren.mobile.crypto.Crypto
-import pl.siren.mobile.data.Area
 import pl.siren.mobile.data.Config
 import pl.siren.mobile.data.LocalAlarm
 import pl.siren.mobile.data.LocalKey
@@ -236,16 +235,17 @@ class SirenEngine(context: Context) {
 
         if (type == "RAISE") {
             if (!store.cancelExists(instanceId)) {
-                val area = p.optJSONObject("area")?.let { Area(it.getDouble("lat"), it.getDouble("lon"), it.getInt("radiusM")) }
+                val description = if (p.isNull("description")) null else p.getString("description")
                 store.upsertRaise(LocalAlarm(instanceId, p.getString("definitionId"), p.getString("code"), title,
-                    p.getString("scenarioVersionId"), createdAt, null, now, bearer, hop, null, area))
+                    p.getString("scenarioVersionId"), createdAt, null, now, bearer, hop, null, description))
                 store.enqueue("RECEPTION", JSONObject().put("alarmInstanceId", instanceId).put("receivedAt", iso(now))
                     .put("viaBearer", bearer).put("hopCount", hop))
-                if (source != "this phone") alerts.alarm(instanceId, title, "Open Siren for your orders")
+                if (source != "this phone") alerts.alarm(instanceId, title, description.orEmpty())
                 note("ALARM $title received via $source${if (hop > 0) " ($hop hops)" else ""}")
             }
         } else {
             store.markCancelled(instanceId, createdAt)
+            if (store.alarms().none { it.active }) store.dropQueuedPositions()
             alerts.cancelled(instanceId, title)
             note("All clear: $title cancelled (via $source)")
         }
@@ -258,11 +258,11 @@ class SirenEngine(context: Context) {
     }
 
     /** Controller phones sign raise / cancel themselves — no server needed. */
-    fun raise(control: Control, area: Area?) = signAndSend(control.definitionId, "RAISE", UUID.randomUUID().toString(), area)
+    fun raise(control: Control, description: String?) = signAndSend(control.definitionId, "RAISE", UUID.randomUUID().toString(), description)
 
     fun cancel(alarm: LocalAlarm) = signAndSend(alarm.definitionId, "CANCEL", alarm.instanceId, null)
 
-    private fun signAndSend(definitionId: String, type: String, instanceId: String, area: Area?): String? {
+    private fun signAndSend(definitionId: String, type: String, instanceId: String, description: String?): String? {
         val scenario = store.scenarios().firstOrNull { it.definitionId == definitionId } ?: return "Scenario not stored on this phone"
         val orgId = JSONObject(String(scenario.bundle)).getString("organizationId")
         val key = store.keys().filter { it.organizationId == orgId && it.signingKey != null && it.status == "CURRENT" }.maxByOrNull { it.epochId }
@@ -272,7 +272,7 @@ class SirenEngine(context: Context) {
             .put("definitionId", definitionId).put("code", scenario.code).put("title", scenario.name)
             .put("scenarioVersionId", scenario.versionId).put("type", type).put("origin", config.deviceId)
             .put("epoch", key.epochId).put("createdAt", Instant.now().toString())
-        area?.let { payload.put("area", JSONObject().put("lat", it.lat).put("lon", it.lon).put("radiusM", it.radiusM)) }
+        description?.trim()?.takeIf { it.isNotEmpty() }?.let { payload.put("description", it) }
         val bytes = payload.toString().toByteArray()
         val signature = Crypto.sign(key.signingKey!!, bytes)
         handleSigned(Crypto.b64(bytes), Crypto.b64(signature), "INTERNET", 0, fromServer = false, source = "this phone")
@@ -285,6 +285,13 @@ class SirenEngine(context: Context) {
         store.enqueue("RECEPTION", JSONObject().put("alarmInstanceId", alarm.instanceId).put("receivedAt", iso(alarm.receivedAt))
             .put("viaBearer", alarm.viaBearer).put("hopCount", alarm.hopCount).put("acknowledgedAt", iso(now)))
         alerts.stopSound()
+        refresh()
+    }
+
+    /** NEED HELP: this person cannot carry out an assigned responsibility. */
+    fun needHelp(alarm: LocalAlarm) {
+        store.enqueue("RECEPTION", JSONObject().put("alarmInstanceId", alarm.instanceId).put("receivedAt", iso(alarm.receivedAt))
+            .put("viaBearer", alarm.viaBearer).put("hopCount", alarm.hopCount).put("helpRequestedAt", iso(System.currentTimeMillis())))
         refresh()
     }
 

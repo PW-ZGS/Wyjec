@@ -1,8 +1,8 @@
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useEffect } from 'react'
-import { Circle, MapContainer, Marker, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
-import type { Area, Location, Participant } from '../api'
+import { MapContainer, Marker, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import type { Location, Participant } from '../api'
 
 export const PERSON_SVG =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M5 21v-1.5A5.5 5.5 0 0 1 10.5 14h3a5.5 5.5 0 0 1 5.5 5.5V21"/><path d="M3 21h18"/></svg>'
@@ -32,28 +32,20 @@ function FitTo({ points, fitKey }: { points: [number, number][]; fitKey: string 
   return null
 }
 
-function ClickPicker({ onPick }: { onPick: (lat: number, lon: number) => void }) {
-  useMapEvents({ click: e => onPick(e.latlng.lat, e.latlng.lng) })
-  return null
-}
-
 interface Props {
-  area?: Area
   participants?: Participant[]
   destinations?: Location[]
   fitKey?: string
-  onPick?: (lat: number, lon: number) => void
   onSelect?: (personId: string) => void
   center?: [number, number]
 }
 
-/** OpenStreetMap view with the affected area (purple), responders and their destinations. */
-export function MapView({ area, participants = [], destinations = [], fitKey = '', onPick, onSelect, center }: Props) {
+/** OpenStreetMap view with responders and their destinations. */
+export function MapView({ participants = [], destinations = [], fitKey = '', onSelect, center }: Props) {
   const positioned = participants.filter(p => p.position)
   const points: [number, number][] = [
     ...positioned.map(p => [p.position!.lat, p.position!.lon] as [number, number]),
     ...destinations.map(d => [d.lat, d.lon] as [number, number]),
-    ...(area ? [[area.lat, area.lon] as [number, number]] : []),
   ]
   return (
     <MapContainer center={center ?? KRAKOW} zoom={14} scrollWheelZoom zoomControl={false}>
@@ -61,13 +53,6 @@ export function MapView({ area, participants = [], destinations = [], fitKey = '
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      {area && (
-        <Circle
-          center={[area.lat, area.lon]}
-          radius={area.radiusM}
-          pathOptions={{ color: '#d946ef', weight: 1, fillColor: '#e879f9', fillOpacity: 0.35 }}
-        />
-      )}
       {destinations.map(d => (
         <Marker key={d.id} position={[d.lat, d.lon]} icon={destIcon}>
           <Tooltip direction="top" offset={[0, -8]}>{d.name}</Tooltip>
@@ -82,7 +67,6 @@ export function MapView({ area, participants = [], destinations = [], fitKey = '
         />
       ))}
       {fitKey && <FitTo points={points} fitKey={fitKey} />}
-      {onPick && <ClickPicker onPick={onPick} />}
     </MapContainer>
   )
 }

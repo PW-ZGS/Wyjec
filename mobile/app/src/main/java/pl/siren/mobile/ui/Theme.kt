@@ -42,14 +42,15 @@ fun SirenTheme(content: @Composable () -> Unit) {
 data class DemoPreset(val name: String, val role: String, val deviceId: String, val psk: String)
 
 val DEMO_PRESETS = listOf(
+    DemoPreset("Ewa Dąbrowska", "School No. 5 · School Director", "0c000000-0000-0000-0000-000000007710", "demo-psk-ewa"),
+    DemoPreset("Andrzej Malinowski", "Kraków · City Mayor", "0c000000-0000-0000-0000-000000000500", "demo-psk-andrzej"),
+    DemoPreset("Dr Robert Krawczyk", "Hospital · Emergency Department Manager", "0c000000-0000-0000-0000-000000011001", "demo-psk-robert"),
+    DemoPreset("Katarzyna Nowak", "Kraków · Crisis Management Operator", "0c000000-0000-0000-0000-000000001001", "demo-psk-katarzyna"),
     DemoPreset("Tomasz Lewandowski", "Kraków · liaison officer · can raise drone strike", "0c000000-0000-0000-0000-000000003345", "demo-psk-tomasz"),
     DemoPreset("Ania Kowalska", "Kraków · civil protection volunteer", "0c000000-0000-0000-0000-000000043572", "demo-psk-ania"),
     DemoPreset("Maja Wiśniewska", "Kraków · evacuation coordinator", "0c000000-0000-0000-0000-000000005623", "demo-psk-maja"),
     DemoPreset("Jacek Zieliński", "Kraków · civil protection volunteer", "0c000000-0000-0000-0000-000000009671", "demo-psk-jacek"),
-    DemoPreset("Ewa Dąbrowska", "School No. 5 · principal (air raid)", "0c000000-0000-0000-0000-000000007710", "demo-psk-ewa"),
-    DemoPreset("Katarzyna Nowak", "Kraków · duty officer · controller", "0c000000-0000-0000-0000-000000001001", "demo-psk-katarzyna"),
     DemoPreset("Dr Piotr Mazur", "Hospital · anesthesiologist", "0c000000-0000-0000-0000-000000011002", "demo-psk-piotr"),
-    DemoPreset("Dr Robert Krawczyk", "Hospital · head of ED · controller", "0c000000-0000-0000-0000-000000011001", "demo-psk-robert"),
     DemoPreset("Sgt. Michał Piotrowski", "Army · squad leader", "0c000000-0000-0000-0000-000000021002", "demo-psk-michal"),
     DemoPreset("Capt. Adam Grabowski", "Army · commander · controller", "0c000000-0000-0000-0000-000000021001", "demo-psk-adam"),
 )

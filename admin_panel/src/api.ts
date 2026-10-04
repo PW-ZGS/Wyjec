@@ -5,7 +5,6 @@ export type ParticipantStatus = 'COMPLETED' | 'ACKNOWLEDGED' | 'UNREAD'
 export type TaskState = 'PENDING' | 'EN_ROUTE' | 'IN_PROGRESS' | 'DONE' | 'BLOCKED'
 
 export interface Session { token: string; username: string; displayName: string; organizationName: string }
-export interface Area { lat: number; lon: number; radiusM: number }
 export interface Location { id: string; name: string; address?: string; lat: number; lon: number }
 
 export interface AlarmDefinition {
@@ -18,14 +17,14 @@ export interface InstanceStats { participants: number; received: number; acknowl
 export interface InstanceSummary {
   id: string; displayNo: number; definitionId: string; code: string; name: string; organizationName: string; domain: Domain
   scenarioVersionId: string; version: number; raisedAt: string; raisedBy?: string; cancelledAt?: string; cancelledBy?: string
-  area?: Area; stats?: InstanceStats
+  description?: string; stats?: InstanceStats
 }
 export interface TaskStatus { taskId: string; orderNo: number; description: string; requiresConfirmation: boolean; state: TaskState; reportedAt?: string; note?: string }
 export interface ParticipantGroup { id: string; name: string; rank: number; location?: Location; tasks: TaskStatus[] }
 export interface Participant {
   personId: string; displayName: string; personRole?: string; shortId: string; role: string; deviceId?: string
   status: ParticipantStatus; blocked: boolean
-  reception?: { receivedAt: string; acknowledgedAt?: string; viaBearer?: string; hopCount?: number }
+  reception?: { receivedAt: string; acknowledgedAt?: string; viaBearer?: string; hopCount?: number; helpRequestedAt?: string }
   position?: { lat: number; lon: number; accuracyM?: number; reportedAt: string }
   groups: ParticipantGroup[]
 }
@@ -53,15 +52,7 @@ export interface DeviceView {
 }
 export interface PersonView { id: string; displayName: string; role?: string; phone?: string; organizationName: string; domain: Domain; devices: DeviceView[] }
 export interface KeyEpochView { id: number; organizationName: string; status: string; validFrom: string; validTo: string; publicKeySha256: string }
-export interface SimulatedDevice { deviceId: string; personId: string; displayName: string; role?: string; organizationName: string; domain: Domain; simulated: boolean; lastSeenAt?: string }
-export interface SimulatorView { demo: boolean; autopilot: boolean; devices: SimulatedDevice[] }
 export interface PublicInfo { demo: boolean; demoAccounts: { username: string; password: string; who: string }[] }
-
-export interface StatusBatch {
-  receptions?: { alarmInstanceId: string; receivedAt: string; viaBearer?: string; hopCount?: number; acknowledgedAt?: string }[]
-  tasks?: { alarmInstanceId: string; taskId: string; state: TaskState; reportedAt: string; note?: string }[]
-  positions?: { alarmInstanceId: string; lat: number; lon: number; accuracyM?: number; reportedAt: string }[]
-}
 
 const TOKEN_KEY = 'siren.session'
 
@@ -114,7 +105,7 @@ export const api = {
   logout: () => request<void>('POST', '/api/admin/logout'),
   definitions: () => request<AlarmDefinition[]>('GET', '/api/admin/alarm-definitions'),
   scenario: (definitionId: string) => request<ScenarioView>('GET', `/api/admin/scenarios/${definitionId}`),
-  raise: (definitionId: string, area?: Area) => request<InstanceDetail>('POST', '/api/admin/alarms', { definitionId, area }),
+  raise: (definitionId: string, description: string) => request<InstanceDetail>('POST', '/api/admin/alarms', { definitionId, description }),
   cancel: (instanceId: string) => request<InstanceDetail>('POST', `/api/admin/alarms/${instanceId}/cancel`),
   active: () => request<InstanceSummary[]>('GET', '/api/admin/alarms/active'),
   history: () => request<InstanceSummary[]>('GET', '/api/admin/alarms/history'),
@@ -122,8 +113,4 @@ export const api = {
   events: () => request<EventRow[]>('GET', '/api/admin/events'),
   people: () => request<PersonView[]>('GET', '/api/admin/people'),
   keys: () => request<KeyEpochView[]>('GET', '/api/admin/keys'),
-  simulator: () => request<SimulatorView>('GET', '/api/admin/simulator'),
-  setAutopilot: (enabled: boolean) => request<SimulatorView>('POST', '/api/admin/simulator/autopilot', { enabled }),
-  setSimulated: (deviceId: string, enabled: boolean) => request<SimulatorView>('POST', `/api/admin/simulator/devices/${deviceId}/simulated`, { enabled }),
-  report: (deviceId: string, batch: StatusBatch) => request<void>('POST', `/api/admin/simulator/devices/${deviceId}/report`, batch),
 }

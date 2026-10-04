@@ -24,11 +24,11 @@ data class InstanceSummary(
     val raisedBy: String?,
     val cancelledAt: Instant?,
     val cancelledBy: String?,
-    val area: AlarmArea?,
+    val description: String?,
     val stats: InstanceStats? = null,
 )
 
-data class Reception(val receivedAt: Instant, val acknowledgedAt: Instant?, val viaBearer: String?, val hopCount: Int?)
+data class Reception(val receivedAt: Instant, val acknowledgedAt: Instant?, val viaBearer: String?, val hopCount: Int?, val helpRequestedAt: Instant?)
 data class Position(val lat: Double, val lon: Double, val accuracyM: Double?, val reportedAt: Instant)
 data class TaskStatus(
     val taskId: UUID,
@@ -83,8 +83,7 @@ class AlarmQueryService(
 ) {
     private val summarySelect = """
         SELECT i.*, a.code, a.name, o.name AS org_name, o.domain, sv.version,
-               rp.display_name AS raised_by, cp.display_name AS cancelled_by,
-               ST_Y(i.area_center::geometry) AS lat, ST_X(i.area_center::geometry) AS lon
+               rp.display_name AS raised_by, cp.display_name AS cancelled_by
         FROM alarm_instance i
         JOIN alarm_definition a ON a.id = i.alarm_definition_id
         JOIN organization o ON o.id = a.organization_id
@@ -107,7 +106,7 @@ class AlarmQueryService(
         raisedBy = rs.getString("raised_by"),
         cancelledAt = rs.getTimestamp("cancelled_at")?.toInstant(),
         cancelledBy = rs.getString("cancelled_by"),
-        area = rs.getObject("area_radius_m")?.let { AlarmArea(rs.getDouble("lat"), rs.getDouble("lon"), rs.getInt("area_radius_m")) },
+        description = rs.getString("description"),
     )
 
     fun active(): List<InstanceSummary> =
@@ -153,7 +152,9 @@ class AlarmQueryService(
             """
             SELECT DISTINCT ON (d.person_id) d.person_id, r.received_at, r.via_bearer, r.hop_count,
                    (SELECT min(r2.acknowledged_at) FROM alarm_reception r2 JOIN device d2 ON d2.id = r2.device_id
-                    WHERE r2.alarm_instance_id = :i AND d2.person_id = d.person_id) AS ack
+                    WHERE r2.alarm_instance_id = :i AND d2.person_id = d.person_id) AS ack,
+                   (SELECT max(r2.help_requested_at) FROM alarm_reception r2 JOIN device d2 ON d2.id = r2.device_id
+                    WHERE r2.alarm_instance_id = :i AND d2.person_id = d.person_id) AS help
             FROM alarm_reception r JOIN device d ON d.id = r.device_id
             WHERE r.alarm_instance_id = :i AND d.person_id IS NOT NULL
             ORDER BY d.person_id, r.received_at
@@ -164,6 +165,7 @@ class AlarmQueryService(
                 acknowledgedAt = rs.getTimestamp("ack")?.toInstant(),
                 viaBearer = rs.getString("via_bearer"),
                 hopCount = rs.getObject("hop_count") as Int?,
+                helpRequestedAt = rs.getTimestamp("help")?.toInstant(),
             )
         }.toMap()
 
@@ -212,7 +214,7 @@ class AlarmQueryService(
                 role = es.map { it.group.name }.distinct().joinToString(" · "),
                 deviceId = phones[personId],
                 status = status,
-                blocked = allTasks.any { it.state == "BLOCKED" },
+                blocked = allTasks.any { it.state == "BLOCKED" } || reception?.helpRequestedAt != null,
                 reception = reception,
                 position = positions[personId],
                 groups = es.map { it.group },

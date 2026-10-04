@@ -18,6 +18,7 @@ data class ReceptionReport(
     val viaBearer: String? = null,
     val hopCount: Int? = null,
     val acknowledgedAt: Instant? = null,
+    val helpRequestedAt: Instant? = null,
 )
 
 data class TaskReport(
@@ -62,19 +63,21 @@ class StatusService(
             if (!instanceExists(r.alarmInstanceId)) { rejected += "reception: unknown alarm ${r.alarmInstanceId}"; continue }
             jdbc.update(
                 """
-                INSERT INTO alarm_reception (alarm_instance_id, device_id, received_at, via_bearer, hop_count, acknowledged_at)
-                VALUES (:i, :d, :r, :b::bearer, :h, :a)
+                INSERT INTO alarm_reception (alarm_instance_id, device_id, received_at, via_bearer, hop_count, acknowledged_at, help_requested_at)
+                VALUES (:i, :d, :r, :b::bearer, :h, :a, :help)
                 ON CONFLICT (alarm_instance_id, device_id) DO UPDATE SET
                     received_at     = LEAST(alarm_reception.received_at, EXCLUDED.received_at),
                     via_bearer      = CASE WHEN EXCLUDED.received_at < alarm_reception.received_at
                                            THEN EXCLUDED.via_bearer ELSE alarm_reception.via_bearer END,
                     hop_count       = CASE WHEN EXCLUDED.received_at < alarm_reception.received_at
                                            THEN EXCLUDED.hop_count ELSE alarm_reception.hop_count END,
-                    acknowledged_at = COALESCE(alarm_reception.acknowledged_at, EXCLUDED.acknowledged_at)
+                    acknowledged_at = COALESCE(alarm_reception.acknowledged_at, EXCLUDED.acknowledged_at),
+                    help_requested_at = COALESCE(EXCLUDED.help_requested_at, alarm_reception.help_requested_at)
                 """.trimIndent(),
                 mapOf(
                     "i" to r.alarmInstanceId, "d" to device.id, "r" to Timestamp.from(r.receivedAt),
                     "b" to r.viaBearer, "h" to r.hopCount, "a" to r.acknowledgedAt?.let(Timestamp::from),
+                    "help" to r.helpRequestedAt?.let(Timestamp::from),
                 ),
             )
             accepted++

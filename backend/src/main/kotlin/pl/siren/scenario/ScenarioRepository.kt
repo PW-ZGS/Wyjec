@@ -196,19 +196,6 @@ class ScenarioRepository(private val jdbc: NamedParameterJdbcTemplate) {
             )
         }
 
-    /** Current published scenario versions in which the person holds an assignment. */
-    fun currentVersionsAssignedTo(personId: UUID): List<UUID> =
-        jdbc.queryForList(
-            """
-            SELECT DISTINCT a.current_scenario_version_id
-            FROM alarm_definition a
-            JOIN task_group g ON g.scenario_version_id = a.current_scenario_version_id
-            JOIN assignment s ON s.task_group_id = g.id
-            WHERE s.person_id = :p
-            """.trimIndent(),
-            mapOf("p" to personId), UUID::class.java,
-        )
-
     fun relayOverride(versionId: UUID, deviceClassId: Int): String? =
         jdbc.query(
             "SELECT relay_mode FROM relay_policy_override WHERE scenario_version_id = :v AND device_class_id = :c",

@@ -2,13 +2,9 @@ import { useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, NavLink, Route, Routes } from 'react-router-dom'
 import { api, loadSession, saveSession, setUnauthorizedHandler, type Session } from './api'
 import { useLiveData, useLiveUpdates } from './hooks'
-import { AlarmsPage } from './pages/AlarmsPage'
-import { EventLogPage } from './pages/EventLogPage'
 import { LivePage } from './pages/LivePage'
 import { LoginPage } from './pages/LoginPage'
-import { PeoplePage } from './pages/PeoplePage'
 import { ScenariosPage } from './pages/ScenariosPage'
-import { SimulatorPage } from './pages/SimulatorPage'
 
 export function App() {
   const [session, setSession] = useState<Session | null>(loadSession)
@@ -34,12 +30,8 @@ export function App() {
           <Route path="/" element={<Navigate to="/live" replace />} />
           <Route path="/live" element={<LivePage />} />
           <Route path="/live/:instanceId" element={<LivePage />} />
-          <Route path="/alarms" element={<AlarmsPage />} />
           <Route path="/scenarios" element={<ScenariosPage />} />
           <Route path="/scenarios/:definitionId" element={<ScenariosPage />} />
-          <Route path="/people" element={<PeoplePage />} />
-          <Route path="/events" element={<EventLogPage />} />
-          <Route path="/simulator" element={<SimulatorPage />} />
           <Route path="*" element={<Navigate to="/live" replace />} />
         </Routes>
       </Shell>
@@ -57,11 +49,7 @@ function Shell({ session, onLogout, children }: { session: Session; onLogout: ()
         <NavLink to="/live" className="brand"><img src="/logo.png" alt="" />SIREN</NavLink>
         <nav className="nav">
           <NavLink to="/live">Live{count > 0 && <span className="badge">{count}</span>}</NavLink>
-          <NavLink to="/alarms">Alarms</NavLink>
           <NavLink to="/scenarios">Scenarios</NavLink>
-          <NavLink to="/people">People & devices</NavLink>
-          <NavLink to="/events">Event log</NavLink>
-          <NavLink to="/simulator">Simulator</NavLink>
         </nav>
         <div className="who">
           <div style={{ textAlign: 'right' }}>
@@ -73,7 +61,7 @@ function Shell({ session, onLogout, children }: { session: Session; onLogout: ()
       </header>
       <main className="content">{children}</main>
       <footer className="footer">
-        <span><span className={`dot ${connected ? 'on' : ''}`} /> &nbsp;SIREN monitors local alerts continuously.</span>
+        <span><span className={`dot ${connected ? 'on' : ''}`} /> &nbsp;{connected ? 'Connected' : 'Disconnected'}</span>
         <span className="secure">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
           Secure connection
